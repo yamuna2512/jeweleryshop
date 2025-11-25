@@ -1,5 +1,5 @@
 from django.db import models
-from django.db import models
+
 
 class User(models.Model):
     first_name = models.CharField(
@@ -8,10 +8,10 @@ class User(models.Model):
     last_name = models.CharField(
         'Lastname',blank=False, null=False,max_length=50
     )    
-    email = models.CharField( 
+    email = models.EmailField( 
         'Email', blank=False, null=False,max_length=100, unique=True
     ) 
-    phone = models.IntegerField()   
+    phone = models.CharField()   
                    
     password = models.CharField(
         'Password', blank=False, null=False,max_length=255   
