@@ -1,0 +1,120 @@
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import Category, SubCategory, Product, Cart, CartItem, Wishlist
+from .serializers import (
+    CategorySerializer,
+    SubCategorySerializer,
+    ProductSerializer,
+    CartSerializer,
+    CartItemSerializer,
+    WishlistSerializer
+)
+
+
+# =============================
+# CATEGORY LIST + CREATE
+# =============================
+class CategoryListView(generics.ListCreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+# =============================
+# SUBCATEGORY LIST + CREATE
+# =============================
+class SubCategoryListView(generics.ListCreateAPIView):
+    queryset = SubCategory.objects.all()
+    serializer_class = SubCategorySerializer
+
+
+# =============================
+# PRODUCT LIST + CREATE
+# =============================
+class ProductListView(generics.ListCreateAPIView):
+    queryset = Product.objects.all().order_by("-id")
+    serializer_class = ProductSerializer
+
+
+# =============================
+# PRODUCT DETAILS
+# =============================
+class ProductDetailView(generics.RetrieveAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    lookup_field = "id"
+
+
+# =============================
+# ADD TO CART
+# =============================
+class AddToCartView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CartItemSerializer
+
+    def post(self, request):
+        user = request.user
+        product_id = request.data.get("product_id")
+        quantity = int(request.data.get("quantity", 1))
+
+        cart, created = Cart.objects.get_or_create(user=user)
+
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product_id=product_id,
+            defaults={"quantity": quantity}
+        )
+
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+
+        return Response({"message": "Item added to cart"}, status=200)
+
+
+# =============================
+# VIEW CART ITEMS
+# =============================
+class CartView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CartSerializer
+
+    def get_queryset(self):
+        return Cart.objects.filter(user=self.request.user)
+
+
+# =============================
+# DELETE ITEM FROM CART
+# =============================
+class RemoveCartItemView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = CartItem.objects.all()
+    serializer_class = CartItemSerializer
+    lookup_field = "id"
+
+
+# =============================
+# ADD TO WISHLIST
+# =============================
+class AddWishlistView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = WishlistSerializer
+
+    def post(self, request):
+        user = request.user
+        product_id = request.data.get("product_id")
+
+        Wishlist.objects.get_or_create(user=user, product_id=product_id)
+
+        return Response({"message": "Product added to wishlist"}, status=200)
+
+
+# =============================
+# VIEW WISHLIST
+# =============================
+class WishlistView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = WishlistSerializer
+
+    def get_queryset(self):
+        return Wishlist.objects.filter(user=self.request.user)
