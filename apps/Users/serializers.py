@@ -1,65 +1,71 @@
-from .models import User
+
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password, check_password
 from secrets import token_hex
 import datetime
-
+from .models import User
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'first_name','last_name', 'email', 'token', 'token_expires')
-
+        fields = ('id', 'first_name', 'last_name', 'email', 'token', 'token_expires')
 class UserSignUpSerializer(serializers.ModelSerializer):
-    email = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
     token = serializers.CharField(read_only=True)
     token_expires = serializers.DateTimeField(read_only=True)
-
     class Meta:
         model = User
-        fields = ('id', 'first_name','last_name', 'email', 'password', 'token', 'token_expires')
-
-    # Overide the create method
-    def create(self, validate_data):
-
-        if User.objects.filter(email=validate_data['email']).exists():
-            raise serializers.ValidationError({'email':['This email is already taken.']})
-
-        # Encrypt the password
-        validate_data['password'] = make_password(validate_data['password'])
-
-        # Create a token
-        validate_data['token'] = token_hex(30)
-        validate_data['token_expires'] = datetime.datetime.now() + datetime.timedelta(days=7)
-
-        return super().create(validate_data)
-
-
+        fields = (
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'password',
+            'token',
+            'token_expires'
+        )
+    # Override create()
+    def create(self, validated_data):
+        # Check if email is taken
+        if User.objects.filter(email=validated_data['email']).exists():
+            raise serializers.ValidationError({'email': ['This email is already taken.']})
+        # Hash password
+        validated_data['password'] = make_password(validated_data['password'])
+        # Generate token
+        validated_data['token'] = token_hex(30)
+        validated_data['token_expires'] = datetime.datetime.now() + datetime.timedelta(days=7)
+        # Create user
+        return super().create(validated_data)
 class UserSignInSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True)
     first_name = serializers.CharField(read_only=True)
     last_name = serializers.CharField(read_only=True)
     token = serializers.CharField(read_only=True)
     token_expires = serializers.DateTimeField(read_only=True)
-
     class Meta:
         model = User
-        fields = ('id', 'first_name','last_name', 'email', 'password', 'token', 'token_expires')
-
-    # Override the create method
+        fields = (
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'password',
+            'token',
+            'token_expires'
+        )
+    # Override create()
     def create(self, validated_data):
-        user = User.objects.filter(email=validated_data['email'])
-        # Check the password
-        if len(user) > 0 and check_password(validated_data['password'], user[0].password):
-            # Token
-            user[0].token = token_hex(30)
-            # Token expires after 7 days
-            user[0].token_expires = datetime.datetime.now() + datetime.timedelta(days=7)
-            user[0].save()
-
-            # Return user information
-            return user[0]
-        else:
-            # Raise error
+        # Fetch user
+        try:
+            user = User.objects.get(email=validated_data['email'])
+        except User.DoesNotExist:
             raise serializers.ValidationError({"error": "The password or email is incorrect."})
+        # Check password
+        if not check_password(validated_data['password'], user.password):
+            raise serializers.ValidationError({"error": "The password or email is incorrect."})
+        # Create new token on login
+        user.token = token_hex(30)
+        user.token_expires = datetime.datetime.now() + datetime.timedelta(days=7)
+        user.save()
+        return user
