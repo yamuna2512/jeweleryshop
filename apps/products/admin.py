@@ -23,19 +23,49 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ("product_name", "sku")
     ordering = ("-created_at",)
 
-# admin.site.register(Cart)
+
+
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "created_at")
-    search_fields = ("user__username",)
+    list_display = ("id", "get_user_id", "created_at")
+    search_fields = ("user__username", "user__email")
     ordering = ("-created_at",)
 
-# admin.site.register(CartItem)
+    # Show user ID
+    def get_user_id(self, obj):
+        return obj.user.id
+    get_user_id.short_description = "User ID"
+
+
+class UserIDFilter(admin.SimpleListFilter):
+    title = "User ID"
+    parameter_name = "user_id"
+
+    def lookups(self, request, model_admin):
+        # Get distinct user IDs from CartItem
+        user_ids = CartItem.objects.values_list('cart__user_id', flat=True).distinct()
+        return [(uid, str(uid)) for uid in user_ids]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(cart__user_id=self.value())
+        return queryset
+
 @admin.register(CartItem)
 class CartItemAdmin(admin.ModelAdmin):
-    list_display = ("id", "cart", "product", "quantity")
-    list_filter = ("cart__user",)
-    search_fields = ("product__product_name","cart__user__email")
+    list_display = ("id", "get_cart_display", "get_product_id", "quantity")
+    # list_filter = ("user_id",)
+    list_filter = (UserIDFilter,) 
+
+    search_fields = ("product__id", "cart__user__email")
+
+    def get_product_id(self, obj):
+        return obj.product.id
+    get_product_id.short_description = "Product ID"
+
+    def get_cart_display(self, obj):
+        return f"Cart #{obj.cart.id} - User {obj.cart.user.id}"
+    get_cart_display.short_description = "Cart"
 
 # admin.site.register(Wishlist)
 @admin.register(Wishlist)
