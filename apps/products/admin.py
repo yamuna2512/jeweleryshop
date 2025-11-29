@@ -34,8 +34,8 @@ class CartAdmin(admin.ModelAdmin):
 @admin.register(CartItem)
 class CartItemAdmin(admin.ModelAdmin):
     list_display = ("id", "cart", "product", "quantity")
-    list_filter = ("product",)
-    search_fields = ("product__product_name",)
+    list_filter = ("cart__user",)
+    search_fields = ("product__product_name","cart__user__email")
 
 # admin.site.register(Wishlist)
 @admin.register(Wishlist)

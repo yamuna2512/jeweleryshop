@@ -77,10 +77,12 @@ class AddToCartView(generics.CreateAPIView):
 # =============================
 class CartView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = CartSerializer
+    serializer_class = CartItemSerializer
 
     def get_queryset(self):
-        return Cart.objects.filter(user=self.request.user)
+        cart, created = Cart.objects.get_or_create(user=self.request.user)
+        return CartItem.objects.filter(cart=cart)
+        # return Cart.objects.filter(user=self.request.user)
 
 
 # =============================
