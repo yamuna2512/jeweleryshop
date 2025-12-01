@@ -67,9 +67,31 @@ class CartItemAdmin(admin.ModelAdmin):
         return f"Cart #{obj.cart.id} - User {obj.cart.user.id}"
     get_cart_display.short_description = "Cart"
 
-# admin.site.register(Wishlist)
+
+class WishlistUserIDFilter(admin.SimpleListFilter):
+    title = "User ID"
+    parameter_name = "user_id"
+
+    def lookups(self, request, model_admin):
+        user_ids = Wishlist.objects.values_list("user_id", flat=True).distinct()
+        return [(uid, str(uid)) for uid in user_ids]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(user_id=self.value())   # IMPORTANT
+        return queryset
+
+
 @admin.register(Wishlist)
 class WishlistAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "product")
-    list_filter = ("user",)
-    search_fields = ("user__username", "product__product_name")
+    list_display = ("id", "get_user_id", "get_product_id")
+    list_filter = (WishlistUserIDFilter,)     # ← USE CORRECT FILTER HERE
+    search_fields = ("user__email", "product__id")
+
+    def get_user_id(self, obj):
+        return obj.user.id
+    get_user_id.short_description = "User ID"
+
+    def get_product_id(self, obj):
+        return obj.product.id
+    get_product_id.short_description = "Product ID"
