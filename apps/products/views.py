@@ -111,6 +111,9 @@ class AddWishlistView(generics.CreateAPIView):
         return Response({"message": "Product added to wishlist"}, status=200)
 
 
+
+
+
 # =============================
 # VIEW WISHLIST
 # =============================
@@ -120,3 +123,5 @@ class WishlistView(generics.ListAPIView):
 
     def get_queryset(self):
         return Wishlist.objects.filter(user=self.request.user)
+
+
